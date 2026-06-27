@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>September Challenge | Daily Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #1C1C1C; --bg2: #111; --surface: #222; --surface2: #2A2A2A;
+    --text: #F5F2EE; --text2: #8A8480; --accent: #E8643A;
+    --green: #6BBF59; --blue: #3A8FE8; --yellow: #E8B83A; --purple: #B85ED6;
+    --beige: #E8E0D5; --border: #2A2A2A;
+    --serif: 'DM Serif Display', serif;
+    --sans: 'DM Sans', sans-serif;
+    --mono: 'DM Mono', monospace;
+    --r: 12px;
+  }
+  html { font-size: 16px; }
+  body { font-family: var(--sans); background: var(--bg); color: var(--text); min-height: 100vh; }
+  button { cursor: pointer; }
+  textarea, input { font-family: var(--sans); }
+
+  .app { max-width: 480px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
+
+  .header { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 18px 20px 14px; position: sticky; top: 0; z-index: 10; }
+  .header-top { display: flex; justify-content: space-between; align-items: flex-start; }
+  .header-title { font-family: var(--serif); font-size: 20px; letter-spacing: -0.5px; }
+  .header-sub { font-family: var(--mono); font-size: 11px; color: var(--text2); margin-top: 3px; }
+  .streak-label { font-family: var(--mono); font-size: 11px; color: var(--text2); text-align: right; }
+  .streak-num { font-family: var(--serif); font-size: 28px; line-height: 1; text-align: right; }
+  .streak-num span { font-size: 14px; color: var(--text2); font-family: var(--sans); }
+
+  .prog-wrap { margin-top: 14px; }
+  .prog-labels { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 10px; color: var(--text2); margin-bottom: 5px; }
+  .prog-labels .now { color: var(--beige); }
+  .prog-track { height: 6px; background: var(--surface2); border-radius: 99px; overflow: hidden; }
+  .prog-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--yellow)); border-radius: 99px; transition: width .6s ease; }
+  .prog-fill.challenge { background: linear-gradient(90deg, var(--blue), var(--purple)); }
+  .prog-pct { font-family: var(--mono); font-size: 10px; color: var(--text2); text-align: right; margin-top: 4px; }
+
+  .nav { display: flex; background: var(--bg2); border-bottom: 1px solid var(--border); }
+  .nav-btn { flex: 1; padding: 10px 2px; border: none; background: none; color: var(--text2); font-family: var(--mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: .2px; border-bottom: 2px solid transparent; transition: all .2s; }
+  .nav-btn.active { color: var(--text); border-bottom-color: var(--accent); }
+
+  .content { padding: 20px 18px; flex: 1; }
+
+  .score-card { display: flex; align-items: center; gap: 16px; background: var(--surface); border-radius: var(--r); padding: 16px; margin-bottom: 20px; }
+  .ring-wrap { position: relative; width: 64px; height: 64px; flex-shrink: 0; }
+  .ring-wrap svg { transform: rotate(-90deg); }
+  .ring-label { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--serif); font-size: 17px; }
+  .score-msg { font-family: var(--serif); font-size: 17px; }
+  .score-sub { font-size: 12px; color: var(--text2); margin-top: 4px; }
+
+  .workout-card { background: #1A222E; border: 1px solid #2A3A4A; border-radius: var(--r); padding: 16px; margin-bottom: 20px; }
+  .workout-title { font-family: var(--mono); font-size: 11px; color: #7AA8E8; text-transform: uppercase; margin-bottom: 10px; }
+  .workout-list { display: flex; flex-direction: column; gap: 6px; }
+  .workout-line { font-size: 13px; color: var(--beige); display: flex; gap: 8px; }
+  .workout-line .dot { color: var(--blue); }
+
+  .checklist { display: flex; flex-direction: column; gap: 10px; margin-bottom: 22px; }
+  .check-item { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: var(--r); border: none; background: var(--surface); border-left: 3px solid var(--border); transition: all .2s; text-align: left; width: 100%; }
+  .check-item.done { background: #1A2B1A; border-left-color: var(--green); }
+  .check-icon { font-size: 20px; flex-shrink: 0; }
+  .check-label { flex: 1; font-size: 14px; color: var(--text); }
+  .check-item.done .check-label { color: var(--green); font-weight: 500; }
+  .check-box { width: 22px; height: 22px; border-radius: 50%; background: var(--surface2); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 12px; color: #fff; transition: background .2s; }
+  .check-item.done .check-box { background: var(--green); }
+
+  .note-card { background: var(--surface); border-radius: var(--r); padding: 16px; margin-bottom: 16px; }
+  .card-label { font-family: var(--mono); font-size: 11px; color: var(--text2); text-transform: uppercase; margin-bottom: 8px; }
+  textarea { width: 100%; background: none; border: none; outline: none; color: var(--text); font-size: 14px; resize: none; min-height: 70px; line-height: 1.6; }
+  .save-btn { margin-top: 8px; padding: 8px 18px; border-radius: 8px; background: var(--accent); border: none; color: #fff; font-family: var(--mono); font-size: 11px; text-transform: uppercase; transition: background .3s; }
+  .save-btn.saved { background: var(--green); }
+
+  .reminder-card { background: var(--surface); border-radius: var(--r); padding: 16px; }
+  .reminder-text { font-size: 12px; color: var(--text2); line-height: 1.7; }
+
+  .section-title { font-family: var(--serif); font-size: 20px; margin-bottom: 18px; }
+
+  .week-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; }
+  .week-item { background: var(--surface); border-radius: var(--r); padding: 14px 16px; border-left: 3px solid var(--border); }
+  .week-item.today { background: #1A2B1A; border-left-color: var(--green); }
+  .week-row { display: flex; justify-content: space-between; margin-bottom: 8px; }
+  .week-day { font-family: var(--mono); font-size: 12px; color: var(--text2); }
+  .week-item.today .week-day { color: var(--green); }
+  .week-score { font-family: var(--mono); font-size: 12px; }
+  .bar-track { height: 4px; background: var(--surface2); border-radius: 99px; }
+  .bar-fill { height: 100%; border-radius: 99px; }
+
+  .past-note { background: var(--surface); border-radius: var(--r); padding: 14px 16px; margin-bottom: 10px; }
+  .past-date { font-family: var(--mono); font-size: 10px; color: var(--text2); margin-bottom: 6px; }
+  .past-text { font-size: 13px; color: var(--beige); line-height: 1.6; }
+
+  .weekly-intro { font-size: 12px; color: var(--text2); margin-bottom: 20px; line-height: 1.6; }
+  .weekly-card { background: var(--surface); border-radius: var(--r); padding: 18px; margin-bottom: 20px; }
+  .field-label { font-size: 12px; color: var(--text2); margin-bottom: 6px; }
+  .field-block { margin-bottom: 14px; }
+  input[type=text] { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: var(--mono); font-size: 16px; padding: 10px 14px; outline: none; }
+  .weekly-history-item { background: var(--surface); border-radius: var(--r); padding: 14px 16px; margin-bottom: 10px; }
+  .wh-week { font-family: var(--mono); font-size: 10px; color: var(--text2); margin-bottom: 6px; }
+  .wh-waist { font-size: 14px; color: var(--beige); }
+  .wh-photo { font-size: 12px; color: var(--text2); margin-top: 4px; }
+
+  .weight-input-card { background: var(--surface); border-radius: var(--r); padding: 18px; margin-bottom: 22px; }
+  .weight-row { display: flex; gap: 10px; align-items: center; margin-top: 10px; }
+  input[type=number] { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: var(--mono); font-size: 18px; padding: 10px 14px; outline: none; }
+  .unit-label { font-size: 14px; color: var(--text2); }
+  .log-btn { padding: 10px 18px; border-radius: 8px; background: var(--accent); border: none; color: #fff; font-family: var(--mono); font-size: 11px; text-transform: uppercase; transition: background .3s; }
+  .log-btn.saved { background: var(--green); }
+
+  .chart-card { background: var(--surface); border-radius: var(--r); padding: 18px; margin-bottom: 20px; }
+  .chart-card svg { width: 100%; overflow: visible; }
+
+  .w-entry { background: var(--surface); border-radius: 10px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .w-date { font-family: var(--mono); font-size: 12px; color: var(--text2); }
+  .w-val { font-family: var(--serif); font-size: 18px; }
+  .w-diff { font-family: var(--mono); font-size: 11px; color: var(--green); }
+
+  .empty-msg { color: var(--text2); font-size: 13px; }
+
+  .footer { text-align: center; padding: 16px; border-top: 1px solid var(--border); margin-top: 8px; }
+  .footer span { font-family: var(--mono); font-size: 10px; color: #333; }
+
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-top">
+      <div>
+        <div class="header-title">September Challenge</div>
+        <div class="header-sub" id="header-sub">Loading…</div>
+      </div>
+      <div>
+        <div class="streak-label">STREAK</div>
+        <div class="streak-num" id="streak-num">0<span>d</span></div>
+      </div>
+    </div>
+
+    <div class="prog-wrap">
+      <div class="prog-labels">
+        <span id="challenge-day-label">DAY 0 / 60</span>
+        <span class="now">Goal: lose 5–7kg, leaner face</span>
+        <span id="challenge-left-label">60d left</span>
+      </div>
+      <div class="prog-track"><div class="prog-fill challenge" id="challenge-fill" style="width:0%"></div></div>
+    </div>
+
+    <div class="prog-wrap" style="margin-top:12px">
+      <div class="prog-labels">
+        <span>START 80kg</span>
+        <span class="now" id="prog-now">80kg now</span>
+        <span>GOAL 70kg</span>
+      </div>
+      <div class="prog-track"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
+    </div>
+  </div>
+
+  <!-- Nav -->
+  <div class="nav">
+    <button class="nav-btn active" onclick="switchView('today', this)">Today</button>
+    <button class="nav-btn" onclick="switchView('week', this)">7-Day</button>
+    <button class="nav-btn" onclick="switchView('weekly', this)">Sunday Check</button>
+    <button class="nav-btn" onclick="switchView('weight', this)">Weight</button>
+  </div>
+
+  <!-- TODAY -->
+  <div class="content" id="view-today">
+
+    <div class="score-card">
+      <div class="ring-wrap">
+        <svg width="64" height="64" viewBox="0 0 64 64">
+          <circle cx="32" cy="32" r="26" fill="none" stroke="#2A2A2A" stroke-width="6"/>
+          <circle id="ring-arc" cx="32" cy="32" r="26" fill="none" stroke="#E8643A" stroke-width="6"
+            stroke-dasharray="0 163" stroke-linecap="round"/>
+        </svg>
+        <div class="ring-label" id="ring-label">0/7</div>
+      </div>
+      <div>
+        <div class="score-msg" id="score-msg">Start now 🚀</div>
+        <div class="score-sub" id="score-sub">7 tasks left · Loading plan</div>
+      </div>
+    </div>
+
+    <div class="workout-card">
+      <div class="workout-title" id="workout-title">Today's session</div>
+      <div class="workout-list" id="workout-list"></div>
+    </div>
+
+    <div class="checklist" id="checklist"></div>
+
+    <div class="note-card">
+      <div class="card-label">Daily Note</div>
+      <textarea id="note-ta" placeholder="How did today go? Any wins? Struggles?"></textarea>
+      <button class="save-btn" id="save-note-btn" onclick="saveNote()">Save Note</button>
+    </div>
+
+    <div class="reminder-card">
+      <div class="card-label">Remember</div>
+      <div class="reminder-text">You can't spot-reduce face fat — it follows overall fat loss. One cheat meal every 10–14 days is fine. Consistency for 60 days beats a perfect week.</div>
+    </div>
+
+  </div>
+
+  <!-- 7-DAY -->
+  <div class="content hidden" id="view-week">
+    <div class="section-title">Last 7 Days</div>
+    <div class="week-list" id="week-list"></div>
+    <div class="section-title" style="margin-top:8px">Recent Notes</div>
+    <div id="past-notes"></div>
+  </div>
+
+  <!-- SUNDAY CHECK -->
+  <div class="content hidden" id="view-weekly">
+    <div class="section-title">Sunday Check-In</div>
+    <div class="weekly-intro">Only 3 things matter weekly: weight, waist, and a mirror photo in the same lighting. Ignore daily fluctuations — log this once, every Sunday.</div>
+
+    <div class="weekly-card">
+      <div class="card-label" id="weekly-week-label">This week</div>
+      <div class="field-block">
+        <div class="field-label">Waist measurement</div>
+        <input type="text" id="waist-input" placeholder="e.g. 36 in" />
+      </div>
+      <div class="field-block">
+        <div class="field-label">Mirror photo — note where it's saved</div>
+        <input type="text" id="photo-input" placeholder="e.g. Photos app, 'Progress' album" />
+      </div>
+      <button class="save-btn" id="save-weekly-btn" onclick="saveWeekly()">Save Check-In</button>
+    </div>
+
+    <div class="section-title" style="font-size:18px">History</div>
+    <div id="weekly-history"></div>
+  </div>
+
+  <!-- WEIGHT -->
+  <div class="content hidden" id="view-weight">
+    <div class="section-title">Weight Log</div>
+    <div class="weight-input-card">
+      <div class="card-label">Log today's weight</div>
+      <div class="weight-row">
+        <input type="number" id="weight-input" placeholder="e.g. 79.5" step="0.1" min="40" max="200" />
+        <span class="unit-label">kg</span>
+        <button class="log-btn" id="log-btn" onclick="saveWeight()">Log</button>
+      </div>
+    </div>
+    <div class="chart-card hidden" id="chart-card">
+      <div class="card-label">14-day trend</div>
+      <svg id="chart-svg" viewBox="0 0 300 130" height="130"></svg>
+    </div>
+    <div id="weight-history"></div>
+  </div>
+
+  <div class="footer"><span>thedataguy.ai</span></div>
+</div>
+
+<script>
+// ─── Constants ───────────────────────────────────────────
+const STORAGE_KEY = 'ashaab-fitness-log-v2';
+const WEIGHT_KEY  = 'ashaab-weight-log-v2';
+const WEEKLY_KEY  = 'ashaab-weekly-log-v2';
+const START_W = 80, GOAL_W = 70;
+const CHALLENGE_START = '2026-06-28';
+const CHALLENGE_END   = '2026-08-26';
+
+const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
+const PLAN = {
+  Mon: { label:'Push',                color:'#E8643A', emoji:'💪' },
+  Tue: { label:'Pull + Back',         color:'#3A8FE8', emoji:'🏋️' },
+  Wed: { label:'Legs + Core',         color:'#B85ED6', emoji:'🦵' },
+  Thu: { label:'Push',                color:'#E8643A', emoji:'💪' },
+  Fri: { label:'Pull + Back',         color:'#3A8FE8', emoji:'🏋️' },
+  Sat: { label:'Long Walk + Stretch', color:'#6BBF59', emoji:'🚶' },
+  Sun: { label:'Rest',                color:'#8A8480', emoji:'😌' },
+};
+
+const WORKOUT_DETAIL = {
+  'Push': [
+    'Push-ups — 4 sets (max good reps)',
+    'Incline push-ups — 3×15',
+    'Band chest press — 4×15',
+    'Band shoulder press — 4×12',
+    'Chair dips — 3×12',
+    'Plank — 3×60 sec',
+  ],
+  'Pull + Back': [
+    'Band rows — 4×15',
+    'Face pulls — 4×15',
+    'Bicep curls — 4×15',
+    'Rear delt fly — 3×15',
+    'Superman hold — 3×30 sec',
+    'Mountain climbers — 3×40',
+  ],
+  'Legs + Core': [
+    'Squats — 4×20',
+    'Reverse lunges — 3×15 each leg',
+    'Glute bridge — 3×20',
+    'Calf raises — 4×25',
+    'Leg raises — 3×15',
+    'Russian twists — 3×25',
+    'Plank — 3×1 min',
+  ],
+  'Long Walk + Stretch': ['45–60 min walk', 'Full-body stretching', 'Mobility work'],
+  'Rest': ["Full rest day — light walk if you feel like it"],
+};
+
+const TASKS = [
+  { id:'steps',   label:'10,000+ steps',                       icon:'👟' },
+  { id:'workout', label:"Today's workout done",                icon:'🏋️' },
+  { id:'protein', label:'120–140g protein, every meal',        icon:'🥩' },
+  { id:'water',   label:'3–4L water',                          icon:'💧' },
+  { id:'sleep',   label:'7–8 hrs sleep',                       icon:'😴' },
+  { id:'nojunk',  label:'No soft drinks/juice/fried/bakery',   icon:'🚫' },
+  { id:'nolate',  label:'No food 2–3 hrs before bed',          icon:'🌙' },
+];
+
+// ─── State ───────────────────────────────────────────────
+let log = {}, weightLog = {}, weeklyLog = {};
+
+function todayKey() { return new Date().toISOString().split('T')[0]; }
+function todayDay()  {
+  const d = new Date().getDay();
+  return DAYS[d === 0 ? 6 : d - 1];
+}
+function daysBetween(a, b) {
+  return Math.round((new Date(b) - new Date(a)) / 86400000);
+}
+function getISOWeekKey(dateStr) {
+  const d = new Date(dateStr);
+  const day = d.getDay();
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  const monday = new Date(d);
+  monday.setDate(d.getDate() + diffToMonday);
+  return monday.toISOString().split('T')[0];
+}
+function load() {
+  try { log       = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch {}
+  try { weightLog = JSON.parse(localStorage.getItem(WEIGHT_KEY)  || '{}'); } catch {}
+  try { weeklyLog = JSON.parse(localStorage.getItem(WEEKLY_KEY)  || '{}'); } catch {}
+}
+function saveLog()  { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(log));       } catch {} }
+function saveWLog() { try { localStorage.setItem(WEIGHT_KEY,  JSON.stringify(weightLog)); } catch {} }
+function saveWkLog(){ try { localStorage.setItem(WEEKLY_KEY,  JSON.stringify(weeklyLog)); } catch {} }
+
+function todayEntry() { return log[todayKey()] || {}; }
+
+// ─── Streak ──────────────────────────────────────────────
+function getStreak() {
+  let s = 0;
+  const today = new Date();
+  for (let i = 0; i < 90; i++) {
+    const d = new Date(today); d.setDate(d.getDate() - i);
+    const k = d.toISOString().split('T')[0];
+    const e = log[k] || {};
+    if (TASKS.filter(t => e[t.id]).length >= 5) s++;
+    else break;
+  }
+  return s;
+}
+
+// ─── Header ──────────────────────────────────────────────
+function renderHeader() {
+  const day = todayDay();
+  const plan = PLAN[day];
+  document.getElementById('header-sub').textContent =
+    `${todayKey()} · ${day} · ${plan.label} ${plan.emoji}`;
+  document.getElementById('streak-num').innerHTML = `${getStreak()}<span>d</span>`;
+
+  // Challenge progress
+  const totalDays = daysBetween(CHALLENGE_START, CHALLENGE_END);
+  const elapsed = Math.min(totalDays, Math.max(0, daysBetween(CHALLENGE_START, todayKey())));
+  const left = Math.max(0, daysBetween(todayKey(), CHALLENGE_END));
+  const challengePct = Math.min(100, (elapsed / totalDays) * 100);
+  document.getElementById('challenge-day-label').textContent = `DAY ${elapsed} / ${totalDays}`;
+  document.getElementById('challenge-left-label').textContent = `${left}d left`;
+  document.getElementById('challenge-fill').style.width = `${Math.max(2, challengePct)}%`;
+
+  // Weight progress
+  const entries = Object.entries(weightLog).sort();
+  const latest  = entries.length ? entries[entries.length-1][1] : START_W;
+  const pct     = Math.min(100, Math.max(0, ((START_W - latest) / (START_W - GOAL_W)) * 100));
+  document.getElementById('prog-now').textContent  = `${latest}kg now`;
+  document.getElementById('prog-fill').style.width = `${Math.max(2, pct)}%`;
+}
+
+// ─── Today ───────────────────────────────────────────────
+function renderToday() {
+  const entry = todayEntry();
+  const done  = TASKS.filter(t => entry[t.id]).length;
+  const day   = todayDay();
+  const plan  = PLAN[day];
+
+  const circ = 163;
+  document.getElementById('ring-arc').setAttribute('stroke-dasharray',
+    `${(done/TASKS.length)*circ} ${circ}`);
+  document.getElementById('ring-label').textContent = `${done}/${TASKS.length}`;
+
+  const msgs = ['Start now 🚀','Keep going 👊','Keep going 👊','Almost there 💪',
+                 'Almost there 💪','Almost there 💪','Almost there 💪','Perfect day! 🔥'];
+  document.getElementById('score-msg').textContent = msgs[done];
+  document.getElementById('score-sub').textContent =
+    `${TASKS.length - done} tasks left · ${plan.emoji} ${plan.label}`;
+
+  // Workout detail card
+  document.getElementById('workout-title').textContent = `${plan.emoji} ${plan.label} — today's session`;
+  const wl = document.getElementById('workout-list');
+  wl.innerHTML = '';
+  WORKOUT_DETAIL[plan.label].forEach(line => {
+    const div = document.createElement('div');
+    div.className = 'workout-line';
+    div.innerHTML = `<span class="dot">•</span>${line}`;
+    wl.appendChild(div);
+  });
+
+  // Checklist
+  const cl = document.getElementById('checklist');
+  cl.innerHTML = '';
+  TASKS.forEach(task => {
+    const isDone = !!entry[task.id];
+    const btn = document.createElement('button');
+    btn.className = `check-item${isDone?' done':''}`;
+    btn.innerHTML = `
+      <span class="check-icon">${task.icon}</span>
+      <span class="check-label">${task.label}</span>
+      <div class="check-box">${isDone?'✓':''}</div>`;
+    btn.onclick = () => toggleTask(task.id);
+    cl.appendChild(btn);
+  });
+
+  document.getElementById('note-ta').value = entry.note || '';
+}
+
+function toggleTask(id) {
+  const k = todayKey();
+  log[k] = { ...todayEntry(), [id]: !todayEntry()[id] };
+  saveLog();
+  renderToday();
+  renderHeader();
+}
+
+function saveNote() {
+  const k = todayKey();
+  log[k] = { ...todayEntry(), note: document.getElementById('note-ta').value };
+  saveLog();
+  const btn = document.getElementById('save-note-btn');
+  btn.textContent = 'Saved ✓'; btn.classList.add('saved');
+  setTimeout(() => { btn.textContent = 'Save Note'; btn.classList.remove('saved'); }, 1500);
+}
+
+// ─── 7-Day ───────────────────────────────────────────────
+function renderWeek() {
+  const today = new Date();
+  const tk    = todayKey();
+  const wl    = document.getElementById('week-list');
+  wl.innerHTML = '';
+
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today); d.setDate(d.getDate() - i);
+    const k = d.toISOString().split('T')[0];
+    const dayName = DAYS[d.getDay() === 0 ? 6 : d.getDay() - 1];
+    const e = log[k] || {};
+    const done = TASKS.filter(t => e[t.id]).length;
+    const pct  = (done / TASKS.length) * 100;
+    const isToday = k === tk;
+    const color = done === TASKS.length ? '#6BBF59' : done >= 5 ? '#E8B83A' : '#E8643A';
+
+    const item = document.createElement('div');
+    item.className = `week-item${isToday?' today':''}`;
+    item.innerHTML = `
+      <div class="week-row">
+        <span class="week-day">${dayName}${isToday?' ← today':''} <span style="font-size:10px;color:#555">${k}</span></span>
+        <span class="week-score">${done}/${TASKS.length}</span>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:${pct}%;background:${color}"></div>
+      </div>`;
+    wl.appendChild(item);
+  }
+
+  const pn = document.getElementById('past-notes');
+  pn.innerHTML = '';
+  const notedEntries = Object.entries(log).sort().reverse().slice(0, 14)
+    .filter(([, e]) => e.note);
+  if (!notedEntries.length) {
+    pn.innerHTML = '<p class="empty-msg">No notes yet. Add one from Today tab!</p>';
+  }
+  notedEntries.forEach(([date, entry]) => {
+    const div = document.createElement('div');
+    div.className = 'past-note';
+    div.innerHTML = `<div class="past-date">${date}</div><div class="past-text">${entry.note}</div>`;
+    pn.appendChild(div);
+  });
+}
+
+// ─── Sunday Check-In ─────────────────────────────────────
+function renderWeekly() {
+  const wk = getISOWeekKey(todayKey());
+  document.getElementById('weekly-week-label').textContent = `This week (of ${wk})`;
+  const thisWeek = weeklyLog[wk] || {};
+  document.getElementById('waist-input').value = thisWeek.waist || '';
+  document.getElementById('photo-input').value = thisWeek.photoNote || '';
+
+  const hist = document.getElementById('weekly-history');
+  hist.innerHTML = '';
+  const sortedWeeks = Object.entries(weeklyLog).sort().reverse();
+  if (!sortedWeeks.length) {
+    hist.innerHTML = '<p class="empty-msg">No check-ins logged yet.</p>';
+    return;
+  }
+  sortedWeeks.forEach(([w, data]) => {
+    const div = document.createElement('div');
+    div.className = 'weekly-history-item';
+    div.innerHTML = `
+      <div class="wh-week">Week of ${w}</div>
+      <div class="wh-waist">Waist: ${data.waist || '—'}</div>
+      ${data.photoNote ? `<div class="wh-photo">📷 ${data.photoNote}</div>` : ''}`;
+    hist.appendChild(div);
+  });
+}
+
+function saveWeekly() {
+  const wk = getISOWeekKey(todayKey());
+  weeklyLog[wk] = {
+    waist: document.getElementById('waist-input').value,
+    photoNote: document.getElementById('photo-input').value,
+    loggedOn: todayKey(),
+  };
+  saveWkLog();
+  renderWeekly();
+  const btn = document.getElementById('save-weekly-btn');
+  btn.textContent = 'Saved ✓'; btn.classList.add('saved');
+  setTimeout(() => { btn.textContent = 'Save Check-In'; btn.classList.remove('saved'); }, 1500);
+}
+
+// ─── Weight ──────────────────────────────────────────────
+function renderWeight() {
+  const tk = todayKey();
+  if (weightLog[tk]) document.getElementById('weight-input').value = weightLog[tk];
+
+  const entries = Object.entries(weightLog).sort();
+
+  const chartCard = document.getElementById('chart-card');
+  if (entries.length >= 2) {
+    chartCard.classList.remove('hidden');
+    const recent = entries.slice(-14);
+    const vals   = recent.map(([,v]) => parseFloat(v));
+    const minV   = Math.min(...vals) - 0.5;
+    const maxV   = Math.max(...vals) + 0.5;
+    const W = 300, H = 110;
+    const toX = i => (i / (recent.length - 1)) * W;
+    const toY = v => H - ((v - minV) / (maxV - minV)) * H;
+
+    const pts = recent.map(([,v],i) => `${toX(i)},${toY(v)}`).join(' ');
+    const area = `M${toX(0)},${toY(recent[0][1])} ` +
+      recent.map(([,v],i) => `L${toX(i)},${toY(v)}`).join(' ') +
+      ` L${toX(recent.length-1)},${H+10} L0,${H+10} Z`;
+
+    const svg = document.getElementById('chart-svg');
+    svg.innerHTML = `
+      <defs>
+        <linearGradient id="gfill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#E8643A" stop-opacity="0.25"/>
+          <stop offset="100%" stop-color="#E8643A" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+      <path d="${area}" fill="url(#gfill)"/>
+      <polyline points="${pts}" fill="none" stroke="#E8643A" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round"/>
+      ${recent.map(([,v],i) =>
+        `<circle cx="${toX(i)}" cy="${toY(v)}" r="3.5" fill="#E8643A"/>`
+      ).join('')}
+    `;
+  } else {
+    chartCard.classList.add('hidden');
+  }
+
+  const hist = document.getElementById('weight-history');
+  hist.innerHTML = '';
+  [...entries].reverse().slice(0, 14).forEach(([date, w]) => {
+    const diff = (START_W - parseFloat(w)).toFixed(1);
+    const div  = document.createElement('div');
+    div.className = 'w-entry';
+    div.innerHTML = `
+      <span class="w-date">${date}</span>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span class="w-val">${w} kg</span>
+        <span class="w-diff">-${diff}</span>
+      </div>`;
+    hist.appendChild(div);
+  });
+
+  if (!entries.length) {
+    hist.innerHTML = '<p class="empty-msg">No weight logged yet. Add today\'s!</p>';
+  }
+}
+
+function saveWeight() {
+  const val = parseFloat(document.getElementById('weight-input').value);
+  if (!val || val < 40 || val > 200) return;
+  weightLog[todayKey()] = val;
+  saveWLog();
+  renderHeader();
+  renderWeight();
+  const btn = document.getElementById('log-btn');
+  btn.textContent = '✓'; btn.classList.add('saved');
+  setTimeout(() => { btn.textContent = 'Log'; btn.classList.remove('saved'); }, 1500);
+}
+
+// ─── Nav ─────────────────────────────────────────────────
+function switchView(name, el) {
+  ['today','week','weekly','weight'].forEach(v => {
+    document.getElementById(`view-${v}`).classList.toggle('hidden', v !== name);
+  });
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  if (name === 'week')   renderWeek();
+  if (name === 'weekly') renderWeekly();
+  if (name === 'weight') renderWeight();
+}
+
+// ─── Init ────────────────────────────────────────────────
+load();
+renderHeader();
+renderToday();
+</script>
+</body>
+</html>
